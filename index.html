@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tetris Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #222;
+        }
+        canvas {
+            border: 2px solid #fff;
+            background-color: #000;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="tetris" width="300" height="600"></canvas>
+
+    <script>
+        const canvas = document.getElementById("tetris");
+        const ctx = canvas.getContext("2d");
+
+        const ROWS = 20;
+        const COLS = 10;
+        const BLOCK_SIZE = 30;
+
+        const COLORS = [
+            "cyan", "yellow", "purple", "green", "red", "blue", "orange"
+        ];
+
+        const SHAPES = [
+            [[1, 1, 1, 1]], // I
+            [[1, 1], [1, 1]], // O
+            [[0, 1, 0], [1, 1, 1]], // T
+            [[1, 1, 0], [0, 1, 1]], // S
+            [[0, 1, 1], [1, 1, 0]], // Z
+            [[1, 0, 0], [1, 1, 1]], // L
+            [[0, 0, 1], [1, 1, 1]]  // J
+        ];
+
+        let board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+        let currentShape = generateRandomShape();
+        let currentPos = { x: Math.floor(COLS / 2) - 1, y: 0 };
+
+        // 게임 루프
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBoard();
+            drawShape(currentShape, currentPos);
+            moveDown();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 보드 그리기
+        function drawBoard() {
+            for (let row = 0; row < ROWS; row++) {
+                for (let col = 0; col < COLS; col++) {
+                    if (board[row][col]) {
+                        ctx.fillStyle = COLORS[board[row][col] - 1];
+                        ctx.fillRect(col * BLOCK_SIZE, row * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                    }
+                }
+            }
+        }
+
+        // 테트리미노 그리기
+        function drawShape(shape, pos) {
+            for (let row = 0; row < shape.length; row++) {
+                for (let col = 0; col < shape[row].length; col++) {
+                    if (shape[row][col]) {
+                        ctx.fillStyle = COLORS[shape[row][col] - 1];
+                        ctx.fillRect((pos.x + col) * BLOCK_SIZE, (pos.y + row) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                    }
+                }
+            }
+        }
+
+        // 랜덤 테트리미노 생성
+        function generateRandomShape() {
+            const randomIndex = Math.floor(Math.random() * SHAPES.length);
+            const shape = SHAPES[randomIndex];
+            return shape.map(row => row.map(() => randomIndex + 1));
+        }
+
+        // 충돌 검사
+        function checkCollision(shape, pos) {
+            for (let row = 0; row < shape.length; row++) {
+                for (let col = 0; col < shape[row].length; col++) {
+                    if (shape[row][col]) {
+                        const x = pos.x + col;
+                        const y = pos.y + row;
+                        if (x < 0 || x >= COLS || y >= ROWS || board[y][x]) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // 블록을 보드에 고정시키기
+        function placeShape() {
+            for (let row = 0; row < currentShape.length; row++) {
+                for (let col = 0; col < currentShape[row].length; col++) {
+                    if (currentShape[row][col]) {
+                        board[currentPos.y + row][currentPos.x + col] = currentShape[row][col];
+                    }
+                }
+            }
+        }
+
+        // 한 줄을 제거하고 점수 증가
+        function clearLines() {
+            for (let row = ROWS - 1; row >= 0; row--) {
+                if (board[row].every(cell => cell !== 0)) {
+                    board.splice(row, 1);
+                    board.unshift(Array(COLS).fill(0));
+                }
+            }
+        }
+
+        // 아래로 이동
+        function moveDown() {
+            const newPos = { x: currentPos.x, y: currentPos.y + 1 };
+            if (!checkCollision(currentShape, newPos)) {
+                currentPos = newPos;
+            } else {
+                placeShape();
+                clearLines();
+                currentShape = generateRandomShape();
+                currentPos = { x: Math.floor(COLS / 2) - 1, y: 0 };
+                if (checkCollision(currentShape, currentPos)) {
+                    alert("Game Over!");
+                    board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+                }
+            }
+        }
+
+        // 방향 이동 처리
+        function moveLeft() {
+            const newPos = { x: currentPos.x - 1, y: currentPos.y };
+            if (!checkCollision(currentShape, newPos)) {
+                currentPos = newPos;
+            }
+        }
+
+        function moveRight() {
+            const newPos = { x: currentPos.x + 1, y: currentPos.y };
+            if (!checkCollision(currentShape, newPos)) {
+                currentPos = newPos;
+            }
+        }
+
+        function rotateShape() {
+            const newShape = currentShape[0].map((_, index) =>
+                currentShape.map(row => row[index])
+            ).reverse();
+            if (!checkCollision(newShape, currentPos)) {
+                currentShape = newShape;
+            }
+        }
+
+        // 키보드 이벤트 처리
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "ArrowLeft") moveLeft();
+            if (event.key === "ArrowRight") moveRight();
+            if (event.key === "ArrowDown") moveDown();
+            if (event.key === "ArrowUp") rotateShape();
+        });
+
+        gameLoop();
+    </script>
+</body>
+</html>
